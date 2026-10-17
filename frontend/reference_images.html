@@ -1,0 +1,128 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <title>Reference Image Management</title>  
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>  
+    <script src="https://cdn.tailwindcss.com"></script>  
+</head>  
+<body class="bg-gray-100">  
+    <div class="container mx-auto p-6 max-w-4xl">  
+        <h1 class="text-3xl font-bold text-center mb-6">Reference Image Management</h1>  
+        
+        <div class="grid md:grid-cols-2 gap-6">  
+            <!-- Image Upload Section -->  
+            <div class="bg-white p-6 rounded-lg shadow-md">  
+                <h2 class="text-xl font-semibold mb-4">Upload Reference Image</h2>  
+                
+                <input   
+                    type="file"   
+                    id="imageUpload"   
+                    accept="image/*"   
+                    class="mb-4 w-full"  
+                >  
+                
+                <div class="mb-4">  
+                    <label class="block text-gray-700 text-sm font-bold mb-2">  
+                        Additional Metadata  
+                    </label>  
+                    <input   
+                        type="text"   
+                        id="metadataInput"   
+                        placeholder="Enter metadata (optional)"  
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"  
+                    >  
+                </div>  
+                
+                <button   
+                    onclick="uploadReferenceImage()"  
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full"  
+                >  
+                    Upload Image  
+                </button>  
+            </div>  
+            
+            <!-- Reference Images Gallery -->  
+            <div class="bg-white p-6 rounded-lg shadow-md">  
+                <h2 class="text-xl font-semibold mb-4">Reference Images</h2>  
+                
+                <div id="referenceImageGallery" class="grid grid-cols-3 gap-4">  
+                    <!-- Images will be dynamically populated -->  
+                </div>  
+            </div>  
+        </div>  
+    </div>  
+
+    <script>  
+        // Function to convert file to base64  
+        function fileToBase64(file) {  
+            return new Promise((resolve, reject) => {  
+                const reader = new FileReader();  
+                reader.readAsDataURL(file);  
+                reader.onload = () => resolve(reader.result.split(',')[1]);  
+                reader.onerror = error => reject(error);  
+            });  
+        }  
+
+        // Upload Reference Image  
+        async function uploadReferenceImage() {  
+            const fileInput = document.getElementById('imageUpload');  
+            const metadataInput = document.getElementById('metadataInput');  
+            
+            if (!fileInput.files.length) {  
+                alert('Please select an image');  
+                return;  
+            }  
+
+            try {  
+                // Convert file to base64  
+                const base64Image = await fileToBase64(fileInput.files[0]);  
+                
+                // Upload to backend  
+                const response = await axios.post('http://localhost:5000/api/reference/upload', {  
+                    image: base64Image,  
+                    metadata: metadataInput.value ? { description: metadataInput.value } : {}  
+                });  
+
+                if (response.data.status === 'success') {  
+                    alert('Image uploaded successfully');  
+                    // Optionally refresh gallery  
+                    fetchReferenceImages();  
+                } else {  
+                    alert('Upload failed');  
+                }  
+            } catch (error) {  
+                console.error('Upload error:', error);  
+                alert('Upload failed');  
+            }  
+        }  
+
+        // Fetch Reference Images  
+        async function fetchReferenceImages() {  
+            try {  
+                const response = await axios.get('http://localhost:5000/api/reference/list');  
+                
+                const gallery = document.getElementById('referenceImageGallery');  
+                gallery.innerHTML = ''; // Clear existing images  
+                
+                response.data.images.forEach(image => {  
+                    const imgContainer = document.createElement('div');  
+                    imgContainer.classList.add('relative');  
+                    
+                    const img = document.createElement('img');  
+                    img.src = image.public_url;  
+                    img.classList.add('w-full', 'h-24', 'object-cover', 'rounded');  
+                    
+                    imgContainer.appendChild(img);  
+                    gallery.appendChild(imgContainer);  
+                });  
+            } catch (error) {  
+                console.error('Fetch error:', error);  
+            }  
+        }  
+
+        // Load images on page load  
+        document.addEventListener('DOMContentLoaded', fetchReferenceImages);  
+    </script>  
+</body>  
+</html>

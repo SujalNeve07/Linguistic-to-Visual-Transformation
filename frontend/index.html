@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FACETRACE</title>
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #1a1d23;
+            --secondary-color: #007bff;
+            --background-color: #f4f4f4;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+        }
+
+        /* Header Styles */
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            height: 500px;
+            overflow: hidden;
+        }
+
+        .hero-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.7);
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 2rem;
+            border-radius: 15px;
+            max-width: 800px;
+            width: 90%;
+        }
+
+        .hero-overlay h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Features Section */
+        .features {
+            display: flex;
+            justify-content: space-around;
+            padding: 6rem 3rem;
+            background-color: white;
+        }
+
+        .feature {
+            text-align: center;
+            max-width: 300px;
+            padding: 1rem;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+        }
+
+        /* Call to Action */
+        .cta-section {
+            text-align: center;
+            padding: 3rem 1rem;
+            background-color: var(--background-color);
+        }
+
+        .cta-button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .cta-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* Login Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .login-form input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>FACETRACE</h1>
+        <p class="tagline">Forensic Visualization: From Words to Wanted</p>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <img src="hero-image.jpg" alt="Forensic Sketch Example" class="hero-image">
+        <div class="hero-overlay">
+            <h2>Innovative Forensic Technology</h2>
+            <p>Bridging the Gap Between Description and Identification: Our AI-Powered Forensic Sketch Matching System Turns Verbal Descriptions into Actionable Visual Intelligence</p>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="feature">
+            <div class="feature-icon">🔍</div>
+            <h3>Advanced Matching</h3>
+            <p>Utilize state-of-the-art machine learning algorithms for precise sketch identification.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🛡️</div>
+            <h3>Secure Processing</h3>
+            <p>Ensuring data privacy and security with robust encryption protocols.</p>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🖌️</div>
+            <h3>Dynamic Sketch Generation</h3>
+            <p>Instantly convert verbal cues into scientifically precise facial reconstructions using AI.</p>
+        </div>
+    </section>
+
+    <!-- Call to Action -->
+    <!-- <section class="cta-section">
+        <h2>Ready to Get Started?</h2>
+        <p>Access our powerful forensic sketch matching tools today.</p>
+        <button class="cta-button" onclick="openLoginModal()">Login Now</button>
+    </section> -->
+
+    <!-- Login Modal -->
+    <section class="cta-section">
+        <h2>Ready to Get Started</h2>
+        <p>Access our <a href="login.html"></a> powerful forensic sketch creation & matching tools today.</p>
+        <button class="cta-button" onclick="redirectToLogin()">Proceed</button>
+    </section>
+
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; BE-A 2025-26 Project Group NO. 14</p>
+    </footer>
+
+    <script>
+        // Redirect to login page function
+        function redirectToLogin() {
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>

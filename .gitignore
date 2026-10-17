@@ -1,0 +1,30 @@
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+*/venv/
+myenv/
+backend/myenv/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+backend/*.json
+*firebase*
+*service-account*.json
+
+# VS Code settings
+.vscode/
+
+# Large model files
+*.dll
+*.lib
+*.pkl
+*.h5
+*.pt
+*.pth

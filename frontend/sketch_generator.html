@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forensic Sketch Generator</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f7; /* Light Grayish Blue */
+            color: #2c3e50; /* Dark Slate Blue */
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(90deg, #2c3e50, #34495e); /* Dark Slate Blue to Lighter Slate Blue */
+            padding: 1rem;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .profile-circle {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #3498db, #2c3e50); /* Bright Blue to Dark Slate Blue */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff; /* White */
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 2px solid #bdc3c7; /* Light Gray border */
+        }
+
+        .profile-circle:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.6); /* Bright Blue glow */
+        }
+
+        /* Popup */
+        .popup-profile {
+            background: linear-gradient(135deg, #ffffff, #f4f6f7); /* White to Light Grayish Blue */
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            display: none;
+            width: 800px; /* Larger width */
+            max-width: 90%;
+            animation: fadeIn 0.4s ease-in-out;
+            border: 1px solid #bdc3c7; /* Light Gray border */
+        }
+
+        .popup-profile.show, .details-popup.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -55%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+
+        .popup-profile h3 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50; /* Dark Slate Blue */
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 2px solid #3498db; /* Bright Blue */
+            padding-bottom: 10px;
+        }
+
+        .popup-profile .detail-item {
+            display: flex;
+            align-items: center; /* Vertically center the label and value */
+            margin: 15px 0;
+            padding: 12px;
+            background-color: #f4f6f7; /* Light Grayish Blue */
+            border-radius: 8px;
+            border: 1px solid #bdc3c7; /* Light Gray border */
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .popup-profile .detail-item:hover {
+            background-color: #e6ecef; /* Slightly darker Light Grayish Blue */
+            transform: translateX(5px);
+        }
+
+        .popup-profile .detail-item span:first-child {
+            font-weight: bold;
+            color: #2c3e50; /* Dark Slate Blue */
+            margin-right: 10px; /* Space between label and value */
+            flex-shrink: 0; /* Prevent label from shrinking */
+        }
+
+        .popup-profile .detail-item span:last-child {
+            color: #34495e; /* Lighter Slate Blue */
+            text-align: left; /* Align value to the left */
+            flex-grow: 1; /* Allow value to take remaining space */
+        }
+
+        .close-popup {
+            cursor: pointer;
+            font-size: 28px;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: #2c3e50; /* Dark Slate Blue */
+            transition: color 0.3s, transform 0.3s;
+        }
+
+        .close-popup:hover {
+            color: #3498db; /* Bright Blue */
+            transform: rotate(90deg);
+        }
+
+        .logout-button {
+            background: linear-gradient(90deg, #3498db, #2c3e50); /* Bright Blue to Dark Slate Blue */
+            color: #ffffff !important; /* White */
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+            display: block;
+            margin: 30px auto 0;
+        }
+
+        .logout-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4); /* Bright Blue shadow */
+        }
+
+        /* Backdrop */
+        .backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(44, 62, 80, 0.7); /* Dark Slate Blue with opacity */
+            z-index: 1500;
+        }
+
+        .backdrop.show {
+            display: block;
+        }
+
+        /* Main Content (70:30 Split) */
+        .main-content {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            margin-top: 80px; /* Space for fixed header */
+            padding: 20px;
+            gap: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: calc(100vh - 80px); /* Ensure it takes full height minus header */
+        }
+
+        /* Left Section (70%) - Prompt Input */
+        .input-section {
+            flex: 0 0 60%; /* Adjusted to 60% as per your code */
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            border: 1px solid #bdc3c7; /* Light Gray border */
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-section h2 {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50; /* Dark Slate Blue */
+            margin-bottom: 15px;
+        }
+
+        .input-section textarea {
+            width: 100%;
+            border: 1px solid #bdc3c7; /* Light Gray border */
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 16px;
+            color: #2c3e50;
+            background-color: #f4f6f7;
+            resize: vertical;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .input-section textarea:focus {
+            border-color: #3498db; /* Bright Blue */
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+            outline: none;
+        }
+
+        .input-section button {
+            background: linear-gradient(90deg, #3498db, #2c3e50); /* Bright Blue to Dark Slate Blue */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.2s, box-shadow 0.3s;
+        }
+
+        .input-section button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .input-section .loading-indicator {
+            margin-top: 10px;
+            color: #3498db; /* Bright Blue */
+        }
+
+        /* Right Section (30%) - Sketch Display */
+        .sketch-display {
+            flex: 0 0 37%; /* Adjusted to 37% as per your code */
+            background-color: #ffffff;
+            border: 1px solid #bdc3c7; /* Light Gray border */
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        #imageGallery {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    width: 100%;
+}
+        .sketch-display h3 {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c3e50; /* Dark Slate Blue */
+            margin-bottom: 15px;
+        }
+
+        .sketch-display img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: transform 0.3s;
+        }
+
+        .sketch-display img:hover {
+            transform: scale(1.05);
+        }
+
+        .sketch-display button {
+            background: linear-gradient(90deg, #3498db, #2c3e50); /* Bright Blue to Dark Slate Blue */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+        }
+
+        .sketch-display button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .input-section, .sketch-display {
+                flex: 0 0 100%; /* Full width on smaller screens */
+            }
+        }
+
+        /* Match Results */
+        .match-group {
+            background-color: #ffffff; /* White background to match other sections */
+            border: 1px solid #bdc3c7; /* Light Gray border */
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .original-section, .matches-section {
+            background-color: #ffffff;
+            border: 1px solid #bdc3c7; /* Light Gray border */
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .match-container {
+            background-color: #f4f6f7; /* Light Grayish Blue to match textarea */
+            border-radius: 8px;
+            padding: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
+        }
+
+        .match-container:hover {
+            transform: translateY(-3px); /* Match the lift effect of buttons */
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4); /* Bright Blue shadow */
+            border: 1px solid #3498db; /* Bright Blue border */
+        }
+
+        /* Define text-2c3e50 class */
+        .text-2c3e50 {
+            color: #2c3e50; /* Dark Slate Blue */
+        }
+
+        /* Responsive Adjustments for Match Results */
+        @media (max-width: 768px) {
+            .match-group {
+                flex-direction: column;
+            }
+            .original-section, .matches-section {
+                flex: 0 0 100%; /* Full width on smaller screens */
+            }
+            .first-row {
+                flex-wrap: wrap;
+                justify-content: center !important; /* Center items on mobile */
+                gap: 15px;
+            }
+            .second-row {
+                flex-wrap: wrap;
+                justify-content: center !important; /* Center items on mobile */
+                gap: 15px;
+            }
+            .match-container {
+                flex: 0 0 100% !important; /* Full width for each item on mobile */
+                max-width: 300px; /* Limit width for better appearance */
+            }
+        }
+
+        /* No Matches Message */
+        .matches-section .text-center.text-gray-500.italic {
+            background-color: #f4f6f7;
+            border-radius: 8px;
+            padding: 10px;
+            color: #2c3e50;
+            font-style: italic;
+        }
+
+        /* Match Loading Indicator */
+        .match-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .match-loading .loading-gif {
+            width: 50px;
+            height: 50px;
+        }
+
+        /* Details Popup */
+        .details-popup {
+            width: 800px; /* Match the Profile Popup width */
+            max-width: 90%;
+        }
+
+        .details-left .detail-item {
+            display: flex;
+            align-items: center; /* Vertically center the label and value */
+            margin: 15px 0;
+            padding: 12px;
+            background-color: #f4f6f7; /* Light Grayish Blue */
+            border-radius: 8px;
+            border: 1px solid #bdc3c7; /* Light Gray border */
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .details-left .detail-item:hover {
+            background-color: #e6ecef; /* Slightly darker Light Grayish Blue */
+            transform: translateX(5px);
+        }
+
+        .details-left .detail-item span:first-child {
+            font-weight: bold;
+            color: #2c3e50; /* Dark Slate Blue */
+            margin-right: 10px; /* Space between label and value */
+            flex-shrink: 0; /* Prevent label from shrinking */
+        }
+
+        .details-left .detail-item span:last-child {
+            color: #34495e; /* Lighter Slate Blue */
+            text-align: left; /* Align value to the left */
+            flex-grow: 1; /* Allow value to take remaining space */
+        }
+
+        /* Responsive Adjustments for Details Popup */
+        @media (max-width: 768px) {
+            .details-popup {
+                width: 90%;
+            }
+            .details-left, .details-right {
+                flex: 0 0 100% !important; /* Full width on smaller screens */
+            }
+            .details-right img {
+                max-height: 200px; /* Reduce image height on mobile */
+            }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header flex items-center justify-between px-6">
+        <h1 class="text-xl font-bold text-white">Forensic Sketch Generator</h1>
+        <div class="profile-circle" id="profileCircle" onclick="showProfilePopup()"></div>
+    </div>
+
+    <!-- Backdrop -->
+    <div class="backdrop" id="backdrop"></div>
+
+    <!-- Profile Popup -->
+    <div class="popup-profile" id="profilePopup">
+        <span class="close-popup" onclick="hideProfilePopup()">×</span>
+        <h3>User Profile</h3>
+        <div class="detail-item">
+            <span>Name:</span>
+            <span id="nameDisplay"></span>
+        </div>
+        <div class="detail-item">
+            <span>Email:</span>
+            <span id="emailDisplay"></span>
+        </div>
+        <div class="detail-item">
+            <span>Forensic ID:</span>
+            <span id="forensicIdDisplay"></span>
+        </div>
+        <div class="detail-item">
+            <span>Department:</span>
+            <span id="departmentDisplay"></span>
+        </div>
+        <button class="logout-button" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- Details Popup -->
+    <div class="popup-profile details-popup" id="detailsPopup">
+        <span class="close-details close-popup" onclick="hideDetailsPopup()">×</span>
+        <h3>Match Details</h3>
+        <div class="flex flex-wrap gap-5">
+            <!-- Left Section (60%) - Details -->
+            <div class="details-left" style="flex: 0 0 60%;">
+                <div class="detail-item">
+                    <span>Name:</span>
+                    <span id="detailsName"></span>
+                </div>
+                <div class="detail-item">
+                    <span>Location:</span>
+                    <span id="detailsLocation"></span>
+                </div>
+                <div class="detail-item">
+                    <span>ID:</span>
+                    <span id="detailsId"></span>
+                </div>
+                <div class="detail-item">
+                    <span>Similarity:</span>
+                    <span id="detailsSimilarity"></span>
+                </div>
+            </div>
+            <!-- Right Section (37%) - Image -->
+            <div class="details-right flex justify-center items-center" style="flex: 0 0 30%;">
+                <img id="detailsImage" src="" alt="Matched Image" class="max-w-full h-auto rounded-lg max-h-64 object-contain">
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content (70:30 Split) -->
+    <div class="main-content">
+        <!-- Left Section (70%) - Prompt Input -->
+        <div class="input-section">
+            <h2>Generate Sketch by giving Prompt</h2>
+            <textarea id="promptInput" rows="5" placeholder="Enter detailed sketch description..."></textarea>
+            <button id="generateBtn">Generate Sketch</button>
+            <span id="loadingIndicator" class="loading-indicator hidden">Generating...</span>
+            <p id="errorMessage" class="hidden text-red-500 mt-4"></p>
+        </div>
+
+        <!-- Right Section (30%) - Sketch Display -->
+        <div class="sketch-display" id="sketchDisplay">
+            <h3>Generated Sketch</h3>
+            <div id="imageGallery"></div>
+            <div style="text-align:center; margin-top:15px;">
+    <button onclick="proceedToMatching()" 
+        style="padding:10px 25px; background:linear-gradient(90deg,#3498db,#2c3e50); color:white; border:none; border-radius:8px; font-weight:bold;">
+        Find Matches
+    </button>
+</div>
+        </div>
+    </div>
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyALf2B9y_y8-krVEwBXEC5zwfzcDyJBLRc",
+            authDomain: "facetrace-a3b02.firebaseapp.com",
+            projectId: "facetrace-a3b02",
+            storageBucket: "facetrace-a3b02.firebasestorage.app",
+            messagingSenderId: "688778782116",
+            appId: "1:688778782116:web:11408102540d8518534d31"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Function to retrieve and display user profile
+        async function fetchUserProfile() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    const fullName = `${userData.firstName} ${userData.lastName}`;
+                    const initials = fullName.split(' ').map(name => name[0]).join('');
+
+                    document.getElementById('profileCircle').textContent = initials;
+                    document.getElementById('nameDisplay').textContent = fullName;
+                    document.getElementById('emailDisplay').textContent = userData.email;
+                    document.getElementById('forensicIdDisplay').textContent = userData.forensicId;
+                    document.getElementById('departmentDisplay').textContent = userData.department || 'Not specified';
+                } else {
+                    console.error('No user data found');
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error fetching user profile:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Logout Function
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'login.html';
+            }).catch((error) => {
+                console.error('Logout error', error);
+            });
+        }
+
+        // Show Profile Popup
+        function showProfilePopup() {
+            document.getElementById('profilePopup').classList.add('show');
+            document.getElementById('backdrop').classList.add('show');
+        }
+
+        function hideProfilePopup() {
+            document.getElementById('profilePopup').classList.remove('show');
+            document.getElementById('backdrop').classList.remove('show');
+        }
+
+        // Enhanced Logging and Error Handling  
+        class Logger {  
+            static log(message, type = 'info') {  
+                console.log(`[${type.toUpperCase()}] ${message}`);  
+            }  
+
+            static error(message) {  
+                console.error(`[ERROR] ${message}`);  
+            }  
+
+            static debug(message) {  
+                console.debug(`[DEBUG] ${message}`);  
+            }  
+        }  
+
+        class UIManager {  
+            static showLoading() {  
+                const loadingIndicator = document.getElementById('loadingIndicator');
+                const generateBtn = document.getElementById('generateBtn');
+                if (loadingIndicator && generateBtn) {
+                    loadingIndicator.classList.remove('hidden');
+                    generateBtn.disabled = true;
+                }
+            }  
+
+            static hideLoading() {  
+                const loadingIndicator = document.getElementById('loadingIndicator');
+                const generateBtn = document.getElementById('generateBtn');
+                if (loadingIndicator && generateBtn) {
+                    loadingIndicator.classList.add('hidden');
+                    generateBtn.disabled = false;
+                }
+            }  
+
+            static showMatchLoading() {
+                const matchLoading = document.getElementById('matchLoading');
+                if (matchLoading) {
+                    matchLoading.classList.remove('hidden');
+                }
+            }
+
+            static hideMatchLoading() {
+                const matchLoading = document.getElementById('matchLoading');
+                if (matchLoading) {
+                    matchLoading.classList.add('hidden');
+                }
+            }
+
+            static displayMessage(message, type = 'error') {  
+                const errorMessageEl = document.getElementById('errorMessage');
+                if (errorMessageEl) {
+                    errorMessageEl.textContent = message;
+                    errorMessageEl.className = type === 'error' ? 'text-red-500' : 'text-green-500';
+                    errorMessageEl.classList.remove('hidden');
+                    setTimeout(() => errorMessageEl.classList.add('hidden'), 3000);
+                }
+            }  
+
+            static clearImageGallery() {  
+    const imageGallery = document.getElementById('imageGallery');
+    if (imageGallery) {
+        imageGallery.innerHTML = '';
+    }
+}  
+        }
+
+        function showDetailsPopup(imageSrc, similarityScore, matchIndex) {
+            console.log('showDetailsPopup called with:', { imageSrc, similarityScore, matchIndex });
+            const popup = document.getElementById('detailsPopup');
+            if (!popup) return;
+
+            const detailsImage = document.getElementById('detailsImage');
+            const detailsName = document.getElementById('detailsName');
+            const detailsLocation = document.getElementById('detailsLocation');
+            const detailsId = document.getElementById('detailsId');
+            const detailsSimilarity = document.getElementById('detailsSimilarity');
+
+            const details = generateRandomDetails(matchIndex);
+            detailsImage.src = imageSrc;
+            detailsName.textContent = details.name;
+            detailsLocation.textContent = details.location;
+            detailsId.textContent = details.id;
+            detailsSimilarity.textContent = `${similarityScore.toFixed(2)}%`;
+
+            popup.classList.add('show');
+            document.getElementById('backdrop').classList.add('show');
+        }
+
+        function hideDetailsPopup() {
+            document.getElementById('detailsPopup').classList.remove('show');
+            document.getElementById('backdrop').classList.remove('show');
+        } 
+
+        // Network Configuration and Utilities  
+        class NetworkConfig {  
+            static BASE_URL = 'http://localhost:5000';
+            
+            static getAxiosInstance() {  
+                const instance = axios.create({  
+                    baseURL: this.BASE_URL,  
+                    timeout: 60000,  
+                    headers: {  
+                        'Content-Type': 'application/json',  
+                        'Accept': 'application/json'  
+                    },  
+                    withCredentials: false  
+                });  
+
+                // Request Interceptor  
+                instance.interceptors.request.use(  
+                    config => {  
+                        Logger.debug(`Sending Request: ${JSON.stringify(config.data)}`);  
+                        return config;  
+                    },  
+                    error => {  
+                        Logger.error(`Request Error: ${error}`);  
+                        return Promise.reject(error);  
+                    }  
+                );  
+
+                // Response Interceptor  
+                instance.interceptors.response.use(  
+                    response => {  
+                        Logger.debug(`Received Response: ${JSON.stringify(response.data)}`);  
+                        return response;  
+                    },  
+                    error => {  
+                        this.handleNetworkError(error);  
+                        return Promise.reject(error);  
+                    }  
+                );  
+
+                return instance;  
+            }  
+
+            static async checkServerConnection() {  
+                try {  
+                    console.log('Attempting to connect to server:', this.BASE_URL);  
+                    const fetchOptions = {  
+                        method: 'GET',  
+                        headers: {  
+                            'Content-Type': 'application/json',  
+                            'Accept': 'application/json'  
+                        },  
+                        signal: AbortSignal.timeout(5000) // 5 seconds timeout  
+                    };  
+
+                    const response = await fetch(`${this.BASE_URL}/health`, fetchOptions);  
+                    console.log('Fetch Response:', {  
+                        status: response.status,  
+                        statusText: response.statusText,  
+                        headers: Object.fromEntries(response.headers.entries())  
+                    });  
+                    
+                    if (!response.ok) {  
+                        console.error('Server response not OK', {  
+                            status: response.status,  
+                            statusText: response.statusText  
+                        });  
+                        switch(response.status) {  
+                            case 404:  
+                                throw new Error('Health endpoint not found. Check server configuration.');  
+                            case 500:  
+                                throw new Error('Internal server error. Backend might be experiencing issues.');  
+                            default:  
+                                throw new Error('Server health check failed');  
+                        }  
+                    }  
+                    
+                    try {  
+                        const data = await response.json();  
+                        console.log('Server Health Check Data:', data);  
+                    } catch (jsonError) {  
+                        console.warn('Could not parse health check response:', jsonError);  
+                    }  
+                    
+                    return true;  
+                } catch (error) {  
+                    console.error('Detailed Connection Error:', {  
+                        message: error.message,  
+                        name: error.name,  
+                        stack: error.stack  
+                    });  
+
+                    if (error.name === 'AbortError') {  
+                        console.error('Connection Timeout Details:', {  
+                            type: 'Timeout Error',  
+                            description: 'Server did not respond within 5 seconds'  
+                        });  
+                        UIManager.displayMessage('Server connection timed out. Ensure backend is running.');  
+                    } else if (error instanceof TypeError) {  
+                        console.error('Network Error Details:', {  
+                            type: 'Network Error',  
+                            description: 'This could be due to CORS, network connectivity, or server not running'  
+                        });  
+                        if (!navigator.onLine) {  
+                            UIManager.displayMessage('No internet connection. Please check your network.');  
+                        } else {  
+                            UIManager.displayMessage(`Connection Error: ${error.message}. Ensure backend is running.`);  
+                        }  
+                    }  
+
+                    return false;  
+                }  
+            }  
+
+            static handleNetworkError(error) {  
+                if (error.response) {  
+                    Logger.error(`Server Error: ${error.response.status}`);  
+                    UIManager.displayMessage(`Server Error: ${error.response.data.message || 'Unknown error'}`);  
+                } else if (error.request) {  
+                    Logger.error('No response received from server');  
+                    UIManager.displayMessage('No response from server. Check server status.');  
+                } else {  
+                    Logger.error(`Request Setup Error: ${error.message}`);  
+                    UIManager.displayMessage(`Request Error: ${error.message}`);  
+                }  
+            }  
+        }  
+
+        // Sketch Generation Logic  
+async function generateSketch() {  
+    console.log('generateSketch function called'); // Debug log
+    const prompt = document.getElementById('promptInput').value.trim();  
+    if (!prompt) { 
+        UIManager.displayMessage('Please provide a detailed sketch description'); 
+        return; 
+    }  
+    UIManager.clearImageGallery();  
+    UIManager.showLoading();  
+    try {  
+        const isServerConnected = await NetworkConfig.checkServerConnection();  
+        if (!isServerConnected) return;  
+        const axiosInstance = NetworkConfig.getAxiosInstance();  
+        const response = await axiosInstance.post('/api/sketch/generate', { 
+            prompt, 
+            num_images: 3 // Hardcoded to 1 since numImagesSelect was removed
+        });  
+        if (response.data.status === 'success') {  
+            let sketches = response.data.data;
+
+if (!Array.isArray(sketches)) {
+    sketches = [sketches];
+}
+
+console.log("Sketch count:", sketches.length);
+            if (sketches.length === 0) { 
+                UIManager.displayMessage('No sketches were generated'); 
+                return; 
+            }  
+            document.getElementById('imageGallery').innerHTML = '';  
+            const imageGallery = document.getElementById('imageGallery');  
+        sketches.forEach((sketch, index) => {  
+
+    const imgContainer = document.createElement('div');  
+    imgContainer.classList.add('relative', 'flex', 'flex-col', 'items-center');  
+
+    const img = document.createElement('img');  
+
+    const imageSrc = sketch.image_url 
+        ? sketch.image_url 
+        : `data:image/png;base64,${sketch.image_base64}`;
+
+    img.src = imageSrc;
+
+    img.classList.add('w-full', 'rounded-lg', 'shadow-md', 'h-64', 'object-contain');  
+
+    const caption = document.createElement('p');  
+    caption.textContent = `Sketch ${index + 1}`;  
+    caption.classList.add('mt-2', 'text-gray-600');  
+
+    const saveButton = document.createElement('button');  
+    saveButton.textContent = 'Add Case';  
+    saveButton.classList.add('bg-blue-500', 'hover:bg-blue-700', 'text-white', 'font-bold', 'py-1', 'px-3', 'rounded');  
+
+    // ✅ NOW correct (after declaration)
+    saveButton.onclick = () => openCriminalForm(imageSrc);
+
+    imgContainer.appendChild(img);  
+    imgContainer.appendChild(caption);  
+    imgContainer.appendChild(saveButton);
+
+    imageGallery.appendChild(imgContainer);  
+});
+            UIManager.displayMessage('Sketches generated successfully', 'success');  
+        } else {  
+            UIManager.displayMessage(response.data.message || 'Sketch generation failed');  
+        }  
+    } catch (error) {  
+        Logger.error(`Sketch Generation Error: ${error}`);  
+        UIManager.displayMessage('An unexpected error occurred during sketch generation');  
+    } finally {  
+        UIManager.hideLoading();  
+    }  
+}
+let selectedImageBase64 = null;
+
+// OPEN FORM
+async function openCriminalForm(imageUrl) {
+    try {
+        const base64 = await convertUrlToBase64(imageUrl);
+        selectedImageBase64 = base64;
+
+        document.getElementById('formImagePreview').src = "data:image/png;base64," + base64;
+
+        document.getElementById('criminalFormPopup').classList.add('show');
+        document.getElementById('backdrop').classList.add('show');
+    } catch (err) {
+        console.error("Error opening form:", err);
+    }
+}
+
+// CLOSE FORM
+function hideCriminalForm() {
+    document.getElementById('criminalFormPopup').classList.remove('show');
+    document.getElementById('backdrop').classList.remove('show');
+}
+
+// SUBMIT FORM
+async function submitCriminalForm() {
+    const name = document.getElementById('criminalName').value;
+    const age = document.getElementById('criminalAge').value;
+    const crime = document.getElementById('criminalCrime').value;
+
+    if (!name || !age || !crime) {
+        alert("All fields required");
+        return;
+    }
+
+    try {
+        const response = await axios.post("http://localhost:5000/api/criminal/add", {
+            name,
+            age,
+            crime,
+            image: selectedImageBase64
+        });
+
+        alert("Saved successfully!");
+        hideCriminalForm();
+    } catch (error) {
+        console.error(error);
+        alert("Error saving data");
+    }
+}
+        // Updated saveSketch function with logging
+        async function saveSketch(imageUrl, index) {
+            try {
+                UIManager.displayMessage(`Saving Sketch ${index + 1}...`, 'success');
+                const base64 = await convertUrlToBase64(imageUrl); // Convert URL to Base64
+                console.log('Sending Base64 (first 50 chars):', base64.substring(0, 50) + '...');
+                const response = await axios.post('http://localhost:5000/api/sketch/save', { sketch: base64 });
+                console.log('Save Response:', response.data);
+                if (response.data.status === 'success') {
+                    UIManager.displayMessage(response.data.message, 'success');
+                } else {
+                    UIManager.displayMessage(response.data.message || 'Failed to save sketch', 'error');
+                }
+            } catch (error) {
+                console.error('Save Sketch Error:', error);
+                if (error.response) {
+                    console.error('Server Response:', error.response.data);
+                    UIManager.displayMessage(error.response.data.message || 'Error saving sketch', 'error');
+                } else {
+                    UIManager.displayMessage('Network error saving sketch', 'error');
+                }
+            }
+        }
+
+        async function proceedToMatching() {  
+            try {  
+                let matchResults = document.getElementById('matchResults');  
+                if (!matchResults) {  
+                    matchResults = document.createElement('div');  
+                    matchResults.id = 'matchResults';  
+                    const parentContainer = document.querySelector('.results-container') || document.body;  
+                    parentContainer.appendChild(matchResults);  
+                }  
+
+                matchResults.innerHTML = '<div style="text-align:center; padding:20px;">Matching...</div>';  
+                UIManager.showMatchLoading();  
+
+                const imageGallery = document.getElementById('imageGallery');  
+                if (!imageGallery) {  
+                    matchResults.innerHTML = '<p>Image gallery not found. Generate sketches first.</p>';  
+                    UIManager.hideMatchLoading();
+                    return;  
+                }  
+                
+                const generatedImages = await Promise.all(
+                    Array.from(imageGallery.querySelectorAll('img'))
+                        .map(async img => {
+                            const src = img.src;
+                            if (!src) return null;
+                            const base64 = await convertUrlToBase64(src);
+                            return base64;
+                        })
+                ).then(images => images.filter(src => src));
+
+                if (generatedImages.length === 0) {  
+    matchResults.innerHTML = '<p>No generated images found. Please generate sketches first.</p>';  
+    UIManager.hideMatchLoading();
+    return;  
+}
+
+// ✅ CORRECT PLACE (outside if)
+try {
+    const prompt = document.getElementById("promptInput").value;
+
+const response = await axios.post(
+    "http://localhost:5000/api/match",
+    {
+        generatedImages,
+        prompt
+    }
+);
+
+    displayMatchResults(response.data, matchResults);
+
+} catch (error) {
+    console.error('Matching Error:', error);
+
+    matchResults.innerHTML = `
+        <div class="error-container bg-white p-4 rounded-lg shadow-md">
+            <h3 class="text-lg font-bold text-red-500">Matching Failed</h3>
+            <p class="text-gray-600">${error.message}</p>
+        </div>
+    `;
+} finally {
+    UIManager.hideMatchLoading();
+}  
+            } catch (error) {  
+                console.error('Matching process error:', error);  
+                let matchResults = document.getElementById('matchResults');  
+                if (!matchResults) {  
+                    matchResults = document.createElement('div');  
+                    matchResults.id = 'matchResults';  
+                    document.body.appendChild(matchResults);  
+                }  
+                matchResults.innerHTML = `  
+                    <div class="error-container bg-white p-4 rounded-lg shadow-md">  
+                        <h3 class="text-lg font-bold text-red-500">Matching Process Failed</h3>  
+                        <p class="text-gray-600">${error.message}</p>  
+                    </div>  
+                `;  
+                UIManager.hideMatchLoading();
+                // Auto-scroll to error message
+                matchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }  
+        } 
+
+        // Utility function to convert file to base64  
+        function convertToBase64(file) {  
+            return new Promise((resolve, reject) => {  
+                const reader = new FileReader();  
+                reader.readAsDataURL(file);  
+                reader.onload = () => resolve(reader.result.split(',')[1]);  
+                reader.onerror = error => reject(error);  
+            });  
+        }  
+
+        // Utility function to convert URL to base64  
+async function convertUrlToBase64(url) {
+    try {
+        const res = await axios.post('http://localhost:5000/api/utils/url-to-base64', {
+            url: url
+        });
+
+        return res.data.base64;
+    } catch (error) {
+        console.error("URL → Base64 failed:", error);
+        throw error;
+    }
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+        // New function to generate random details for matched images
+        function generateRandomDetails(matchIndex) {
+            const details = [
+                { name: "John Doe", location: "New York", id: "Criminal_ID-12345" },
+                { name: "Jane Smith", location: "Los Angeles", id: "Criminal_ID-67890" },
+                { name: "Robert Johnson", location: "Chicago", id: "Criminal_ID-54321" },
+                { name: "Emily Davis", location: "Houston", id: "Criminal_ID-98765" },
+                { name: "Michael Brown", location: "Miami", id: "Criminal_ID-24680" }
+            ];
+            return details[matchIndex % 5];
+        }
+
+        function displayMatchResults(matchData, resultsContainer) {  
+            try {  
+                if (!resultsContainer) {  
+                    resultsContainer = document.getElementById('matchResults');  
+                    if (!resultsContainer) {  
+                        resultsContainer = document.createElement('div');  
+                        resultsContainer.id = 'matchResults';  
+                        document.body.appendChild(resultsContainer);  
+                    }  
+                }  
+                resultsContainer.innerHTML = '';  
+
+                if (!matchData || !matchData.data || !Array.isArray(matchData.data)) {  
+                    resultsContainer.innerHTML = '<p class="text-center text-gray-500 italic bg-white p-4 rounded-lg shadow-md">No valid match data found.</p>';  
+                    console.error('Invalid match data structure:', matchData);  
+                    return;  
+                }  
+
+                if (matchData.data.length === 0) {  
+                    resultsContainer.innerHTML = '<p class="text-center text-gray-500 italic bg-white p-4 rounded-lg shadow-md">No matches found.</p>';  
+                    return;  
+                }  
+
+                matchData.data.forEach(matchGroup => {  
+                    if (!matchGroup) return;  
+
+                    const matchElement = document.createElement('div');  
+                    matchElement.classList.add('match-group', 'flex', 'flex-wrap', 'gap-5', 'bg-white', 'p-4', 'rounded-lg', 'shadow-md', 'mb-4');  
+
+                    // Left Section (37%) - Original Generated Image
+                    const originalImgSection = document.createElement('div');  
+                    originalImgSection.classList.add('original-section', 'flex', 'flex-col', 'items-center', 'bg-white', 'border', 'border-gray-300', 'rounded-lg', 'p-4', 'shadow-sm');  
+                    originalImgSection.style.flex = '0 0 37%'; // 37% width to match the upper right section
+
+                    const originalImgTitle = document.createElement('h3');  
+                    originalImgTitle.textContent = 'Original Generated Sketch';  
+                    originalImgTitle.classList.add('text-lg', 'font-bold', 'mb-2', 'text-2c3e50');  
+
+                    const originalImg = document.createElement('img');  
+                    console.log('Generated Image Src:', matchGroup.generated_image);  
+                    if (matchGroup.generated_image) {
+                        originalImg.src = matchGroup.generated_image;  
+                    } else {
+                        originalImg.src = 'https://via.placeholder.com/150?text=No+Generated+Image';
+                    }
+                    originalImg.classList.add('max-w-full', 'h-auto', 'rounded-lg', 'max-h-64', 'object-contain');  
+
+                    originalImgSection.appendChild(originalImgTitle);  
+                    originalImgSection.appendChild(originalImg);  
+                    matchElement.appendChild(originalImgSection);  
+
+                    // Right Section (60%) - Matches
+                    const matchesSection = document.createElement('div');  
+                    matchesSection.classList.add('matches-section', 'bg-white', 'border', 'border-gray-300', 'rounded-lg', 'p-4', 'shadow-sm');  
+                    matchesSection.style.flex = '0 0 60%'; // 60% width to match the upper left section
+
+                    const matchesTitle = document.createElement('h3');  
+                    matchesTitle.textContent = 'Top Matches';  
+                    matchesTitle.classList.add('text-lg', 'font-bold', 'mb-2', 'text-2c3e50');  
+                    matchesSection.appendChild(matchesTitle);  
+
+                    if (matchGroup.matches && matchGroup.matches.length > 0) {  
+                        const matchesGrid = document.createElement('div');  
+                        matchesGrid.classList.add('matches-grid');  
+
+                        // First Row (3 images)
+                        const firstRow = document.createElement('div');  
+                        firstRow.classList.add('first-row', 'flex', 'justify-between', 'mb-4');  
+
+                        // Second Row (2 images, centered)
+                        const secondRow = document.createElement('div');  
+                        secondRow.classList.add('second-row', 'flex', 'justify-center', 'gap-4');  
+
+                        matchGroup.matches.forEach((match, index) => {  
+                            if (!match) return;  
+
+                            const matchContainer = document.createElement('div');  
+                            matchContainer.classList.add('match-container', 'text-center', 'bg-gray-100', 'p-2', 'rounded-lg');  
+
+                            const matchImg = document.createElement('img');  
+                            console.log('Match Image Src:', match.image);  
+                            if (match.image) {
+                                matchImg.src = match.image;  
+                            } else {
+                                matchImg.src = 'https://via.placeholder.com/150?text=No+Match+Image';
+                            }
+                            matchImg.classList.add('w-full', 'h-48', 'object-contain', 'rounded-lg', 'mb-2', 'cursor-pointer');  
+                            matchImg.onclick = () => {
+                                console.log('Image clicked:', { src: match.image, similarity: match.similarity_score, index });
+                                showDetailsPopup(match.image, match.similarity_score, index);
+                            };
+
+                            const similarityText = document.createElement('p');  
+                            similarityText.textContent = match.similarity_score ? `Similarity: ${match.similarity_score.toFixed(2)}%` : 'Similarity: N/A';  
+                            similarityText.classList.add('text-sm', 'font-semibold', 'text-gray-700');  
+                            if (match.similarity_score >= 90) { similarityText.classList.add('text-green-600'); }  
+                            else if (match.similarity_score >= 70) { similarityText.classList.add('text-yellow-600'); }  
+                            else { similarityText.classList.add('text-red-600'); }  
+
+                            matchContainer.appendChild(matchImg);  
+                            matchContainer.appendChild(similarityText);  
+
+                            // Distribute images: first 3 in first row, next 2 in second row
+                            if (index < 3) {
+                                matchContainer.style.flex = '0 0 30%'; // Roughly 1/3 of the row with some spacing
+                                firstRow.appendChild(matchContainer);
+                            } else if (index < 5) {
+                                matchContainer.style.flex = '0 0 30%'; // Roughly 1/3 to maintain size consistency
+                                secondRow.appendChild(matchContainer);
+                            }
+                        });
+
+                        matchesGrid.appendChild(firstRow);  
+                        matchesGrid.appendChild(secondRow);  
+                        matchesSection.appendChild(matchesGrid);  
+                    } else {  
+                        const noMatchesText = document.createElement('p');  
+                        noMatchesText.textContent = 'No similar images found';  
+                        noMatchesText.classList.add('text-center', 'text-gray-500', 'italic');  
+                        matchesSection.appendChild(noMatchesText);  
+                    }  
+
+                    matchElement.appendChild(matchesSection);  
+                    resultsContainer.appendChild(matchElement);  
+                });  
+
+                // Auto-scroll to matchResults after rendering
+                resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {  
+                console.error('Error in displayMatchResults:', error);  
+                if (!resultsContainer) {  
+                    resultsContainer = document.getElementById('matchResults');  
+                    if (!resultsContainer) { resultsContainer = document.createElement('div'); resultsContainer.id = 'matchResults'; document.body.appendChild(resultsContainer); }  
+                }  
+                resultsContainer.innerHTML = `<div class="error-container bg-white p-4 rounded-lg shadow-md"><h3 class="text-lg font-bold text-red-500">Display Error</h3><p class="text-gray-600">Unable to display match results: ${error.message}</p></div>`;  
+                // Auto-scroll even if there's an error
+                resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }  
+        }
+
+        // Check authentication state on page load and add event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    fetchUserProfile();
+                } else {
+                    window.location.href = 'login.html';
+                }
+            });
+
+            // Add event listener for the Generate Sketch button
+            const generateBtn = document.getElementById('generateBtn');
+            if (generateBtn) {
+                generateBtn.addEventListener('click', generateSketch);
+                console.log('Event listener added to Generate Sketch button');
+            } else {
+                console.error('Generate Sketch button not found');
+            }
+        });
+    </script>
+<!-- Criminal Form Popup -->
+<div class="popup-profile" id="criminalFormPopup">
+    <span class="close-popup" onclick="hideCriminalForm()">×</span>
+    <h3>Add Criminal Details</h3>
+
+    <img id="formImagePreview" style="width:150px; margin:auto; display:block; border-radius:10px;" />
+
+    <input type="text" id="criminalName" placeholder="Enter Name" class="w-full mt-4 p-2 border rounded"/>
+    <input type="number" id="criminalAge" placeholder="Enter Age" class="w-full mt-2 p-2 border rounded"/>
+    <input type="text" id="criminalCrime" placeholder="Enter Crime" class="w-full mt-2 p-2 border rounded"/>
+
+    <button onclick="submitCriminalForm()" class="mt-4 w-full bg-blue-500 text-white p-2 rounded">
+        Save Record
+    </button>
+</div>  
+</body>  
+</html>
